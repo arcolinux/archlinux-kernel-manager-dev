@@ -438,38 +438,49 @@ def install_archive_kernel(self):
 
             error = None
 
-            if "installation finished. no error reported." in event_log:
+            if (
+                "installation finished. no error reported."
+                or "initcpio image generation successful" in event_log
+            ):
                 error = False
+
+                print("installation finished")
             else:
-                # check errors and indicate to user install failed
-                for log in event_log:
-                    # if "installation finished. no error reported." in log:
-                    #     error = False
-                    #     break
-                    if "error" in log or "errors" in log:
+                if error is None:
+                    # check errors and indicate to user install failed
+                    for log in event_log:
+                        # if "installation finished. no error reported." in log:
+                        #     error = False
+                        #     break
+                        if "error" in log or "errors" in log:
+                            event = (
+                                "%s <b>[ERROR]: Errors have been encountered during installation</b>\n"
+                                % (
+                                    datetime.datetime.now().strftime(
+                                        "%Y-%m-%d-%H-%M-%S"
+                                    )
+                                )
+                            )
 
-                        event = (
-                            "%s <b>[ERROR]: Errors have been encountered during installation</b>\n"
-                            % (datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
-                        )
+                            logger.error(log)
 
-                        self.messages_queue.put(event)
+                            self.messages_queue.put(event)
 
-                        self.errors_found = True
+                            self.errors_found = True
 
-                        error = True
+                            error = True
 
-                        GLib.idle_add(
-                            show_mw,
-                            self,
-                            "System changes",
-                            f"Kernel {self.action} failed\n"
-                            f"<b>There have been errors, please review the logs</b>\n",
-                            "images/48x48/akm-warning.png",
-                            priority=GLib.PRIORITY_DEFAULT,
-                        )
+                            GLib.idle_add(
+                                show_mw,
+                                self,
+                                "System changes",
+                                f"Kernel {self.action} failed\n"
+                                f"<b>There have been errors, please review the logs</b>\n",
+                                "images/48x48/akm-warning.png",
+                                priority=GLib.PRIORITY_DEFAULT,
+                            )
 
-                        break
+                            break
 
             # query to check if kernel installed
             if "headers" in pkg_archive_url:

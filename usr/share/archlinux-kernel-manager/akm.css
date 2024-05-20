@@ -156,15 +156,6 @@ button#button_uninstall_kernel{
     padding: 10px 10px 10px 10px;
 }
 
-.sidebar label:hover,
-.sidebar label:focus{
-    font-weight: bold;
-}
-
-#hbox_stack_sidebar{
-    /*box-shadow: rgba(33, 35, 38, 0.1) 0px 10px 10px -10px;*/
-}
-
 #textview_log text{
     background-color: #232627;
     color: #fcfcfc;
