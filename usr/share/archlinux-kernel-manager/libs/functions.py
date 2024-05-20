@@ -395,144 +395,129 @@ def write_cache():
 # install from the ALA
 def install_archive_kernel(self):
     try:
-        for pkg_archive_url in self.official_kernels:
-            if self.errors_found is True:
-                break
+        install_cmd_str = [
+            "pacman",
+            "-U",
+            self.official_kernels[0],
+            self.official_kernels[1],
+            "--noconfirm",
+            "--needed",
+        ]
 
-            install_cmd_str = [
-                "pacman",
-                "-U",
-                pkg_archive_url,
-                "--noconfirm",
-                "--needed",
-            ]
+        wait_for_pacman_process()
 
-            wait_for_pacman_process()
+        logger.info("Running %s" % install_cmd_str)
 
-            logger.info("Running %s" % install_cmd_str)
+        event = "%s [INFO]: Running %s\n" % (
+            datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
+            " ".join(install_cmd_str),
+        )
 
-            event = "%s [INFO]: Running %s\n" % (
+        event_log = []
+        self.messages_queue.put(event)
+
+        with subprocess.Popen(
+            install_cmd_str,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=1,
+            universal_newlines=True,
+        ) as process:
+            while True:
+                if process.poll() is not None:
+                    break
+                for line in process.stdout:
+                    print(line.strip())
+                    self.messages_queue.put(line)
+                    event_log.append(line.lower().strip())
+
+                time.sleep(0.3)
+
+        error = None
+
+        if (
+            "installation finished. no error reported."
+            or "initcpio image generation successful" in event_log
+        ):
+            error = False
+
+            print("installation finished")
+        else:
+            if error is None:
+                # check errors and indicate to user install failed
+                for log in event_log:
+                    # if "installation finished. no error reported." in log:
+                    #     error = False
+                    #     break
+                    if "error" in log or "errors" in log:
+                        event = (
+                            "%s <b>[ERROR]: Errors have been encountered during installation</b>\n"
+                            % (datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"))
+                        )
+
+                        logger.error(log)
+
+                        self.messages_queue.put(event)
+
+                        self.errors_found = True
+
+                        error = True
+
+                        GLib.idle_add(
+                            show_mw,
+                            self,
+                            "System changes",
+                            f"Kernel {self.action} failed\n"
+                            f"<b>There have been errors, please review the logs</b>\n",
+                            "images/48x48/akm-warning.png",
+                            priority=GLib.PRIORITY_DEFAULT,
+                        )
+
+                        break
+
+        # query to check if kernel installed
+
+        if check_kernel_installed(self.kernel.name + "-headers") and error is False:
+
+            self.kernel_state_queue.put((0, "install", self.kernel.name + "-headers"))
+
+            event = "%s [INFO]: Installation of %s-headers completed\n" % (
                 datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
-                " ".join(install_cmd_str),
+                self.kernel.name,
             )
 
-            event_log = []
             self.messages_queue.put(event)
 
-            with subprocess.Popen(
-                install_cmd_str,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                bufsize=1,
-                universal_newlines=True,
-            ) as process:
-                while True:
-                    if process.poll() is not None:
-                        break
-                    for line in process.stdout:
-                        print(line.strip())
-                        self.messages_queue.put(line)
-                        event_log.append(line.lower().strip())
+        else:
+            self.kernel_state_queue.put((1, "install", self.kernel.name + "-headers"))
 
-                    time.sleep(0.3)
+            event = "%s [ERROR]: Installation of %s-headers failed\n" % (
+                datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
+                self.kernel.name,
+            )
 
-            error = None
+            self.errors_found = True
+            self.messages_queue.put(event)
 
-            if (
-                "installation finished. no error reported."
-                or "initcpio image generation successful" in event_log
-            ):
-                error = False
+        if check_kernel_installed(self.kernel.name) and error is False:
+            self.kernel_state_queue.put((0, "install", self.kernel.name))
 
-                print("installation finished")
-            else:
-                if error is None:
-                    # check errors and indicate to user install failed
-                    for log in event_log:
-                        # if "installation finished. no error reported." in log:
-                        #     error = False
-                        #     break
-                        if "error" in log or "errors" in log:
-                            event = (
-                                "%s <b>[ERROR]: Errors have been encountered during installation</b>\n"
-                                % (
-                                    datetime.datetime.now().strftime(
-                                        "%Y-%m-%d-%H-%M-%S"
-                                    )
-                                )
-                            )
+            event = "%s [INFO]: Installation of kernel %s completed\n" % (
+                datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
+                self.kernel.name,
+            )
 
-                            logger.error(log)
+            self.messages_queue.put(event)
 
-                            self.messages_queue.put(event)
+        else:
+            self.kernel_state_queue.put((1, "install", self.kernel.name))
 
-                            self.errors_found = True
+            event = "%s [ERROR]: Installation of kernel %s failed\n" % (
+                datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
+                self.kernel.name,
+            )
 
-                            error = True
-
-                            GLib.idle_add(
-                                show_mw,
-                                self,
-                                "System changes",
-                                f"Kernel {self.action} failed\n"
-                                f"<b>There have been errors, please review the logs</b>\n",
-                                "images/48x48/akm-warning.png",
-                                priority=GLib.PRIORITY_DEFAULT,
-                            )
-
-                            break
-
-            # query to check if kernel installed
-            if "headers" in pkg_archive_url:
-                if (
-                    check_kernel_installed(self.kernel.name + "-headers")
-                    and error is False
-                ):
-
-                    self.kernel_state_queue.put(
-                        (0, "install", self.kernel.name + "-headers")
-                    )
-
-                    event = "%s [INFO]: Installation of %s-headers completed\n" % (
-                        datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
-                        self.kernel.name,
-                    )
-
-                    self.messages_queue.put(event)
-
-                else:
-                    self.kernel_state_queue.put(
-                        (1, "install", self.kernel.name + "-headers")
-                    )
-
-                    event = "%s [ERROR]: Installation of %s-headers failed\n" % (
-                        datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
-                        self.kernel.name,
-                    )
-
-                    self.errors_found = True
-                    self.messages_queue.put(event)
-
-            else:
-                if check_kernel_installed(self.kernel.name) and error is False:
-                    self.kernel_state_queue.put((0, "install", self.kernel.name))
-
-                    event = "%s [INFO]: Installation of kernel %s completed\n" % (
-                        datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
-                        self.kernel.name,
-                    )
-
-                    self.messages_queue.put(event)
-
-                else:
-                    self.kernel_state_queue.put((1, "install", self.kernel.name))
-
-                    event = "%s [ERROR]: Installation of kernel %s failed\n" % (
-                        datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
-                        self.kernel.name,
-                    )
-
-                    self.messages_queue.put(event)
+            self.messages_queue.put(event)
 
         # signal to say end reached
         self.kernel_state_queue.put(None)

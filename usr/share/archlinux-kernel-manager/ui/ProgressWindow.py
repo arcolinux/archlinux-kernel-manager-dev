@@ -418,8 +418,9 @@ class ProgressWindow(Gtk.Window):
             )
 
             mw.present()
-        else:
-            self.destroy()
+
+            return True
+        return False
 
     def check_kernel_state(self):
         returncode = None
