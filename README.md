@@ -156,12 +156,6 @@ Logs can be found inside `/var/log/archlinux-kernel-manager`
 
 - python-psutil
 
-# Installing the application
-
-`wget https://raw.githubusercontent.com/DeltaCopy/archlinux-kernel-manager/main/PKGBUILD`
-
-`makepkg -si`
-
 # Running the application
 
 Run `akm` or `archlinux-kernel-manager` to launch the application.
