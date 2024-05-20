@@ -30,8 +30,6 @@
 # reset - commit your changes or stash them before you merge
 # git reset --hard - personal alias - grh
 
-sh icon-cache-maker.sh
-
 # checking if I have the latest files from github
 echo "Checking for newer files online first"
 git pull
