@@ -24,6 +24,9 @@ case "$session" in
     echo "[INFO] Session = $session"
 
     test -z "$(xauth list)" || echo "[INFO] Xauth session = OK"
+
+    # GDK_BACKEND=x11 - use XWAYLAND for backend
+    pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS GTK_A11Y=none GDK_BACKEND=x11 '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
   ;;
   "x11")
     # X11 session, don't do anything here
@@ -32,6 +35,8 @@ case "$session" in
 
     # just show msg on whether the Xauth session cookie is setup
     test -z "$(xauth list)" || echo "[INFO] Xauth session = OK"
+
+    pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS GTK_A11Y=none '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
   ;;
   "tty")
     # TTY session, as user may not use a display manager
@@ -43,9 +48,9 @@ case "$session" in
   *)
     # anything here is an unknown session, most likely AKM will fail to load
     echo "[WARN] Continuing, but cannot verify session for user."
+
+    echo "[WARN] Session not verified falling back to X11"
+    pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS GTK_A11Y=none '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
   ;;
 esac
 echo "---------------------------------------------------------------------------"
-
-echo "[INFO] Starting Arch Linux Kernel Manager"
-pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS GTK_A11Y=none '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
