@@ -48,5 +48,4 @@ esac
 echo "---------------------------------------------------------------------------"
 
 echo "[INFO] Starting Arch Linux Kernel Manager"
-pkexec '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
-
+pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS GTK_A11Y=none '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
