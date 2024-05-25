@@ -14,7 +14,7 @@ class AboutDialog(Gtk.AboutDialog):
         super().__init__(**kwargs)
 
         website = "http://arcolinux.info/"
-        authors = ["Erik Dubois", "fennec"]
+        authors = ["Erik Dubois", "Fennec"]
         program_name = "Arch Linux Kernel Manager"
         comments = (
             f"Add/Remove Officially supported Linux kernels on Arch based systems\n"

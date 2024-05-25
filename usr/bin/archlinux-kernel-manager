@@ -16,41 +16,60 @@ test -z "$session" && echo "[ERROR] Failed to verify session for user." && exit 
 xauth_file=$(xauth info | awk -F"Authority file:" '{print $2}' | tr -d ' ')
 test -s "$xauth_file" || touch "$xauth_file"
 
+# GDK_BACKEND=x11 - force GTK to use XWAYLAND
+# GTK_A11Y=none - fixes the dbus-launch errors with GTK4
+
+function start_on_wayland() {
+  xauth gen $DISPLAY &> /dev/null
+  test -z "$(xauth list)" || echo "[INFO] Xauth session = OK"
+  pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS GTK_A11Y=none GDK_BACKEND=x11 '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
+}
+
+function start_on_x11() {
+  test -z "$(xauth list)" || echo "[INFO] Xauth session = OK"
+  pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS GTK_A11Y=none '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
+}
+
 case "$session" in
-  "wayland")
-    # Wayland session, generate Xauth session cookie for $DISPLAY
-    xauth gen $DISPLAY &> /dev/null
-    echo "[INFO] Display = $DISPLAY"
-    echo "[INFO] Session = $session"
+    "wayland")
+      # Wayland session, generate Xauth session cookie for $DISPLAY
+      start_on_wayland
+    ;;
+    "x11")
+      # X11 session, don't do anything here
+      echo "[INFO] Display = $DISPLAY"
+      echo "[INFO] Session = $session"
 
-    test -z "$(xauth list)" || echo "[INFO] Xauth session = OK"
+      # just show msg on whether the Xauth session cookie is setup
+      start_on_x11
+    ;;
+    "tty")
+      # TTY session, as user may not use a display manager
+      echo "[INFO] Display = $DISPLAY"
+      echo "[INFO] Session = $session"
 
-    # GDK_BACKEND=x11 - use XWAYLAND for backend
-    pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS GTK_A11Y=none GDK_BACKEND=x11 '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
-  ;;
-  "x11")
-    # X11 session, don't do anything here
-    echo "[INFO] Display = $DISPLAY"
-    echo "[INFO] Session = $session"
+      start_on_x11
+    ;;
+    *)
+      # anything here is an unknown session, most likely AKM will fail to load
+      echo "[INFO] Display = $DISPLAY"
+      echo "[INFO] Session could not be verified ... falling back to use XDG_SESSION_TYPE"
 
-    # just show msg on whether the Xauth session cookie is setup
-    test -z "$(xauth list)" || echo "[INFO] Xauth session = OK"
-
-    pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS GTK_A11Y=none '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
-  ;;
-  "tty")
-    # TTY session, as user may not use a display manager
-    echo "[INFO] Display = $DISPLAY"
-    echo "[INFO] Session = $session"
-
-    test -z "$(xauth list)" || echo "[INFO] Xauth session = OK"
-  ;;
-  *)
-    # anything here is an unknown session, most likely AKM will fail to load
-    echo "[WARN] Continuing, but cannot verify session for user."
-
-    echo "[WARN] Session not verified falling back to X11"
-    pkexec env DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS GTK_A11Y=none '/usr/share/archlinux-kernel-manager/archlinux-kernel-manager.py'
-  ;;
-esac
+      case "$XDG_SESSION_TYPE" in
+        "wayland")
+          start_on_wayland
+        ;;
+        "tty")
+          start_on_tty
+        ;;
+        "x11")
+          start_on_x11
+        ;;
+        *)
+          echo "[ERROR] $XDG_SESSION_TYPE is empty, cannot continue"
+          exit 1
+        ;;
+      esac
+    ;;
+  esac
 echo "---------------------------------------------------------------------------"

@@ -94,8 +94,15 @@ class ProgressWindow(Gtk.Window):
                 % (self.kernel.name, self.kernel.version)
             )
 
-            # get kernel version from pacman
-            self.installed_kernel_version = fn.get_kernel_version(self.kernel.name)
+        # get kernel version from pacman
+        self.installed_kernel_version = fn.get_kernel_version(self.kernel.name)
+
+        if self.installed_kernel_version is not None:
+            fn.logger.debug(
+                "Installed kernel version = %s" % self.installed_kernel_version
+            )
+        else:
+            fn.logger.debug("Nothing to remove .. previous kernel not installed")
 
         image_settings.set_halign(Gtk.Align.START)
         image_settings.set_icon_size(Gtk.IconSize.LARGE)
