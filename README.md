@@ -1,6 +1,6 @@
 # Arch Linux Kernel Manager
 
-A GTK4 Python application used to install and remove Linux Kernels on an Arch based system.
+A GTK4 Python application which installs and removes Linux Kernels on Arch Linux based systems.
 
 Installation and removal of Kernels is carried out using Pacman.
 
