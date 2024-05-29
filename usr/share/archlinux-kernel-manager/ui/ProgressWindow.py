@@ -447,12 +447,6 @@ class ProgressWindow(Gtk.Window):
 
                         fn.logger.info("Kernel %s completed" % action)
 
-                        event = "%s [INFO]: <b>Kernel %s completed</b>\n" % (
-                            fn.datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S"),
-                            action,
-                        )
-                        self.messages_queue.put(event)
-
                     if returncode == 1:
                         self.errors_found = True
 
