@@ -64,10 +64,6 @@ By default, the application will use `bootctl` to distinguish which bootloader (
 
 `grub-mkconfig` is run to update the grub.cfg file.
 
-## systemd-boot
-
-`bootctl --no-variables ---graceful update` is run to update systemd-boot entries
-
 # Advanced settings
 
 ## Bootloader settings

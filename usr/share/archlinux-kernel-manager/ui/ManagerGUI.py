@@ -50,10 +50,6 @@ class ManagerGUI(Gtk.ApplicationWindow):
 
         self.splash_screen = SplashScreen(app_name)
 
-        while self.default_context.pending():
-            fn.time.sleep(0.1)
-            self.default_context.iteration(True)
-
         try:
             fn.Thread(
                 target=self.wait_for_gui_load,
@@ -61,6 +57,10 @@ class ManagerGUI(Gtk.ApplicationWindow):
             ).start()
         except Exception as e:
             fn.logger.error(e)
+
+        while self.default_context.pending():
+            fn.time.sleep(0.1)
+            self.default_context.iteration(True)
 
         hbox_notify_revealer = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL, spacing=20
@@ -207,7 +207,6 @@ class ManagerGUI(Gtk.ApplicationWindow):
                     message=f"The specified Grub config file: {self.bootloader_grub_cfg} does not exist\n"
                     f"This will cause an issue when updating the bootloader\n"
                     f"Update the configuration file/use the Advanced Settings to change this\n",
-                    image_path="images/48x48/akm-error.png",
                     detailed_message=False,
                     transient_for=self,
                 )
@@ -222,7 +221,6 @@ class ManagerGUI(Gtk.ApplicationWindow):
                         message=f"Cannot select systemd-boot, UEFI boot mode is not available\n"
                         f"Update the configuration file\n"
                         f"Or use the Advanced Settings to change this\n",
-                        image_path="images/48x48/akm-warning.png",
                         detailed_message=False,
                         transient_for=self,
                     )
@@ -310,7 +308,6 @@ class ManagerGUI(Gtk.ApplicationWindow):
             message=f"Pacman db synchronization failed\n"
             f"Failed to run 'pacman -Syu'\n"
             f"{sync_err}\n",
-            image_path="images/48x48/akm-warning.png",
             transient_for=self,
             detailed_message=True,
         )
@@ -533,10 +530,10 @@ class ManagerGUI(Gtk.ApplicationWindow):
             fn.logger.debug("Adding community kernels to UI")
             self.kernel_stack.add_community_kernels_to_stack(reload=False)
 
-        fn.logger.debug("Adding installed kernels to UI")
-        self.kernel_stack.add_installed_kernels_to_stack(reload=False)
+            fn.logger.debug("Adding installed kernels to UI")
+            self.kernel_stack.add_installed_kernels_to_stack(reload=False)
 
         while self.default_context.pending():
             self.default_context.iteration(True)
 
-            fn.time.sleep(0.1)
+            fn.time.sleep(0.3)
