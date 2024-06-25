@@ -1275,6 +1275,7 @@ def get_pacman_repos():
 
 
 def get_installed_kernel_info(package_name):
+    logger.info("Installed kernel info")
     query_str = ["pacman", "-Qi", package_name]
 
     try:
@@ -1293,6 +1294,7 @@ def get_installed_kernel_info(package_name):
             for line in out.decode("utf-8").splitlines():
                 if line.startswith("Installed Size  :"):
                     install_size = line.split("Installed Size  :")[1].strip()
+                    logger.debug("Installed kernel size = %s" % install_size)
                     if "MiB" in install_size:
                         install_size = round(
                             float(install_size.replace("MiB", "").strip()) * 1.048576,
@@ -1310,6 +1312,7 @@ def get_installed_kernel_info(package_name):
 
 
 def get_installed_kernels():
+    logger.info("Get installed kernels")
     query_str = ["pacman", "-Q"]
     installed_kernels = []
 
@@ -1334,6 +1337,7 @@ def get_installed_kernels():
                             package_name in supported_kernels_dict
                             or package_name in community_kernels_dict
                         ):
+                            logger.debug("Installed linux package = %s" % package_name)
                             install_size, install_date = get_installed_kernel_info(
                                 package_name
                             )

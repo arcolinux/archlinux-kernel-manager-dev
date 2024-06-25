@@ -185,10 +185,10 @@ class ManagerGUI(Gtk.ApplicationWindow):
             self.vbox.append(self.notify_revealer)
 
             self.installed_kernels = fn.get_installed_kernels()
+            if self.installed_kernels is not None:
+                fn.logger.info("Installed kernels = %s" % len(self.installed_kernels))
 
             self.active_kernel = fn.get_active_kernel()
-
-            fn.logger.info("Installed kernels = %s" % len(self.installed_kernels))
 
             self.refresh_cache = False
 
