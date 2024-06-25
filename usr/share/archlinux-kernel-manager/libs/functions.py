@@ -1358,11 +1358,12 @@ def get_installed_kernels():
 
 def get_active_kernel():
     logger.info("Getting active Linux kernel")
-    query_str = ["uname", "-rs"]
+    # cmd = ["uname", "-rs"]
+    cmd = ["kernel-install"]
 
     try:
         process_kernel_query = subprocess.Popen(
-            query_str,
+            cmd,
             shell=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -1374,13 +1375,15 @@ def get_active_kernel():
         if process_kernel_query.returncode == 0:
             for line in out.decode("utf-8").splitlines():
                 if len(line.strip()) > 0:
-                    kernel = line.strip()
-                    _version = "-".join(kernel.split("-")[:-1])
-                    _type = kernel.split("-")[-1]
+                    if "Kernel Version:" in line:
+                        logger.info(
+                            "Active kernel = %s"
+                            % line.split("Kernel Version:")[1].strip()
+                        )
+                        return line.split("Kernel Version:")[1].strip()
+        else:
+            return "unknown"
 
-                    logger.info("Active kernel = %s" % kernel)
-
-                    return kernel
     except Exception as e:
         logger.error("Exception in get_active_kernel(): %s" % e)
 
@@ -1468,8 +1471,12 @@ def get_boot_loader():
 def get_kernel_modules_version(kernel, db):
     cmd = None
     if db == "local":
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Getting kernel module version from local pacman repo")
         cmd = ["pacman", "-Qli", kernel]
     if db == "package":
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Getting kernel module version from package cache file")
         cmd = ["pacman", "-Qlip", kernel]
     # pacman_kernel_version = None
     kernel_modules_path = None
@@ -1558,32 +1565,35 @@ def run_process(self):
 def kernel_initrd(self):
     logger.info("Adding and removing kernel and initird images")
     pkg_modules_version = None
-    if self.source == "official":
 
-        pkg_modules_version = get_kernel_modules_version(
-            "%s/%s"
-            % (
-                pacman_cache,
-                "%s-x86_64%s" % (self.kernel.version, self.kernel.file_format),
-            ),
-            "package",
-        )
+    if self.action == "install":
+        if self.source == "official":
 
-    if self.source == "community":
-        pkg_modules_version = get_kernel_modules_version(
-            "%s/%s"
-            % (
-                pacman_cache,
-                "%s-%s-x86_64.pkg.tar.zst" % (self.kernel.name, self.kernel.version),
-            ),
-            "package",
-        )
+            pkg_modules_version = get_kernel_modules_version(
+                "%s/%s"
+                % (
+                    pacman_cache,
+                    "%s-x86_64%s" % (self.kernel.version, self.kernel.file_format),
+                ),
+                "package",
+            )
 
-    if pkg_modules_version is None:
-        logger.error("Failed to extract modules version from package")
-        return 1
+        if self.source == "community":
+            pkg_modules_version = get_kernel_modules_version(
+                "%s/%s"
+                % (
+                    pacman_cache,
+                    "%s-%s-x86_64.pkg.tar.zst"
+                    % (self.kernel.name, self.kernel.version),
+                ),
+                "package",
+            )
 
-    logger.debug("Package modules version = %s" % pkg_modules_version)
+        if pkg_modules_version is None:
+            logger.error("Failed to extract modules version from package")
+            return 1
+
+        logger.debug("Package modules version = %s" % pkg_modules_version)
 
     # cmd = ["pacman", "-Qlp", "%s/" % pacman_cache]
 

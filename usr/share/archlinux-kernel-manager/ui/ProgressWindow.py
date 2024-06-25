@@ -287,6 +287,9 @@ class ProgressWindow(Gtk.Window):
                 fn.logger.info("No previous %s kernel installed" % self.kernel.name)
         else:
             fn.logger.info("Community kernel, no kernel restore available")
+            self.local_modules_version = fn.get_kernel_modules_version(
+                self.kernel.name, "local"
+            )
 
         if fn.check_pacman_lockfile() is False:
             th_monitor_messages_queue = fn.threading.Thread(
