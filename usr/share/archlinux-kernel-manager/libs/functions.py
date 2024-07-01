@@ -91,10 +91,6 @@ logger = logging.getLogger("logger")
 # create console handler and set level to debug
 ch = logging.StreamHandler()
 
-
-logger.setLevel(logging.DEBUG)
-ch.setLevel(logging.DEBUG)
-
 # create formatter
 formatter = logging.Formatter(
     "%(asctime)s:%(levelname)s > %(message)s", "%Y-%m-%d %H:%M:%S"
@@ -208,7 +204,11 @@ def get_latest_kernel_updates(self):
                                     logger.info("Linux kernel package not updated")
 
                                     return False
+                else:
+                    logger.error("Failed to get valid response to check kernel update")
+                    logger.error(response.text)
 
+                    return False
             else:
                 logger.info("Kernel update check not required")
 
@@ -331,24 +331,42 @@ def read_config(self):
         with open(config_file, "rb") as f:
             config_data = tomlkit.load(f)
 
-            for official_kernel in config_data["kernels"]["official"]:
-                supported_kernels_dict[official_kernel["name"]] = (
-                    official_kernel["description"],
-                    official_kernel["headers"],
-                )
+            if (
+                config_data.get("kernels")
+                and "official" in config_data["kernels"] is not None
+            ):
+                for official_kernel in config_data["kernels"]["official"]:
+                    supported_kernels_dict[official_kernel["name"]] = (
+                        official_kernel["description"],
+                        official_kernel["headers"],
+                    )
 
-            for community_kernel in config_data["kernels"]["community"]:
-                community_kernels_dict[community_kernel["name"]] = (
-                    community_kernel["description"],
-                    community_kernel["headers"],
-                    community_kernel["repository"],
-                )
+            if (
+                config_data.get("kernels")
+                and "community" in config_data["kernels"] is not None
+            ):
+                for community_kernel in config_data["kernels"]["community"]:
+                    community_kernels_dict[community_kernel["name"]] = (
+                        community_kernel["description"],
+                        community_kernel["headers"],
+                        community_kernel["repository"],
+                    )
 
-            loglevel = config_data["logging"]["loglevel"].lower()
-            logger.info("Setting loglevel to %s" % loglevel)
-            if loglevel == "debug":
-                logger.setLevel(logging.DEBUG)
-            if loglevel == "info":
+            if (
+                config_data.get("logging") is not None
+                and "loglevel" in config_data["logging"] is not None
+            ):
+
+                loglevel = config_data["logging"]["loglevel"].lower()
+                logger.info("Setting loglevel to %s" % loglevel)
+                if loglevel == "debug":
+                    logger.setLevel(logging.DEBUG)
+                elif loglevel == "info":
+                    logger.setLevel(logging.INFO)
+                else:
+                    logger.warning("Invalid logging level set, use info / debug")
+                    logger.setLevel(logging.INFO)
+            else:
                 logger.setLevel(logging.INFO)
 
         return config_data
@@ -911,12 +929,13 @@ def check_kernel_installed(name):
 
 
 def wait_for_pacman_process():
-
+    logger.info("Waiting for pacman process")
     timeout = 120
     i = 0
     while check_pacman_lockfile():
         time.sleep(0.1)
-        logger.debug("Pacman lockfile found .. waiting")
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Pacman lockfile found .. waiting")
         i += 1
         if i == timeout:
             logger.info("Timeout reached")
@@ -956,7 +975,8 @@ def uninstall(self):
             self.kernel_state_queue.put((0, "uninstall"))
             return
 
-        logger.debug("Uninstall cmd = %s" % uninstall_cmd_str)
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Uninstall cmd = %s" % uninstall_cmd_str)
 
         # check if kernel, and kernel header is actually installed
         if uninstall_cmd_str is not None:
@@ -1089,11 +1109,31 @@ def get_community_kernels(self):
                             version = line.split("Version         :")[1].strip()
                         if line.startswith("Installed Size  :"):
                             install_size = line.split("Installed Size  :")[1].strip()
-                            if "MiB" in install_size:
-                                install_size = round(
-                                    float(install_size.replace("MiB", "").strip())
-                                    * 1.048576,
+                            if logger.getEffectiveLevel() == 10:
+                                logger.debug(
+                                    "%s installed kernel size = %s"
+                                    % (name, install_size)
                                 )
+                            if "MiB" in install_size:
+                                if install_size.find(",") >= 0:
+                                    if logger.getEffectiveLevel() == 10:
+                                        logger.debug("Comma found inside install size")
+                                    install_size = round(
+                                        float(
+                                            install_size.replace(",", ".")
+                                            .strip()
+                                            .replace("MiB", "")
+                                            .strip()
+                                        )
+                                        * 1.048576,
+                                        1,
+                                    )
+                                else:
+                                    install_size = round(
+                                        float(install_size.replace("MiB", "").strip())
+                                        * 1.048576,
+                                        1,
+                                    )
 
                         if line.startswith("Build Date      :"):
                             build_date = line.split("Build Date      :")[1].strip()
@@ -1121,7 +1161,8 @@ def get_community_kernels(self):
 # =====================================================
 def install_community_kernel(self):
     try:
-        logger.debug("Cleaning pacman cache, removing community packages")
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Cleaning pacman cache, removing community packages")
         if os.path.exists(pacman_cache):
             for root, dirs, files in os.walk(pacman_cache):
                 for name in files:
@@ -1275,11 +1316,10 @@ def get_pacman_repos():
 
 
 def get_installed_kernel_info(package_name):
-    logger.info("Installed kernel info")
+    logger.info("Installed kernel info - %s" % package_name)
     query_str = ["pacman", "-Qi", package_name]
 
     try:
-
         process_kernel_query = subprocess.Popen(
             query_str,
             shell=False,
@@ -1294,14 +1334,35 @@ def get_installed_kernel_info(package_name):
             for line in out.decode("utf-8").splitlines():
                 if line.startswith("Installed Size  :"):
                     install_size = line.split("Installed Size  :")[1].strip()
-                    logger.debug("Installed kernel size = %s" % install_size)
-                    if "MiB" in install_size:
-                        install_size = round(
-                            float(install_size.replace("MiB", "").strip()) * 1.048576,
+                    if logger.getEffectiveLevel() == 10:
+                        logger.debug(
+                            "%s installed kernel size = %s"
+                            % (package_name, install_size)
                         )
+                    if "MiB" in install_size:
+                        if install_size.find(",") >= 0:
+                            logger.debug("Comma found inside install size")
+                            install_size = round(
+                                float(
+                                    install_size.replace(",", ".")
+                                    .strip()
+                                    .replace("MiB", "")
+                                    .strip()
+                                )
+                                * 1.048576,
+                                1,
+                            )
+                        else:
+                            install_size = round(
+                                float(install_size.replace("MiB", "").strip())
+                                * 1.048576,
+                                1,
+                            )
                 if line.startswith("Install Date    :"):
                     install_date = line.split("Install Date    :")[1].strip()
             return install_size, install_date
+        else:
+            logger.error("Failed to get installed kernel info")
     except Exception as e:
         logger.error("Exception in get_installed_kernel_info(): %s" % e)
 
@@ -1337,7 +1398,10 @@ def get_installed_kernels():
                             package_name in supported_kernels_dict
                             or package_name in community_kernels_dict
                         ):
-                            logger.debug("Installed linux package = %s" % package_name)
+                            if logger.getEffectiveLevel() == 10:
+                                logger.debug(
+                                    "Installed linux package = %s" % package_name
+                                )
                             install_size, install_date = get_installed_kernel_info(
                                 package_name
                             )
@@ -1402,22 +1466,23 @@ def sync_package_db():
 
         cmd = ["pacman", "-Sy"]
 
-        logger.debug("Running cmd = %s" % cmd)
-        process_sync = subprocess.run(
+        if logger.getEffectiveLevel() == 10:
+            logger.debug("Running cmd = %s" % cmd)
+
+        process = subprocess.Popen(
             cmd,
             shell=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=process_timeout,
             env=locale_env,
         )
 
-        if process_sync.returncode > 0:
-            if process_sync.stdout:
-                out = str(process_sync.stdout.decode("utf-8"))
-                logger.error(out)
+        out, err = process.communicate(timeout=600)
 
-                return out
+        if process.returncode == 0:
+            return None
+        else:
+            return out.decode("utf-8")
 
     except Exception as e:
         logger.error("Exception in sync_package_db(): %s" % e)

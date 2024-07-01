@@ -12,7 +12,7 @@ class MessageWindow(Gtk.Window):
     def __init__(self, title, message, detailed_message, **kwargs):
         super().__init__(**kwargs)
 
-        # self.set_title(title=title)
+        self.set_title(title=title)
         self.set_modal(modal=True)
         self.set_resizable(False)
         icon_name = "akm-tux"
@@ -76,7 +76,7 @@ class MessageWindow(Gtk.Window):
         button_ok.set_halign(Gtk.Align.END)
         button_ok.connect("clicked", self.on_button_ok_clicked)
 
-        hbox_buttons = Gtk.Box.new(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
+        hbox_buttons = Gtk.Box.new(orientation=Gtk.Orientation.HORIZONTAL, spacing=50)
         hbox_buttons.set_halign(Gtk.Align.END)
         hbox_buttons.append(button_ok)
 
