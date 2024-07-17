@@ -551,8 +551,11 @@ def install_archive_kernel(self):
 
 
 def refresh_cache(self):
+
+    cached_kernels_list.clear()
     if os.path.exists(cache_file):
         os.remove(cache_file)
+
     get_official_kernels(self)
     write_cache()
 
@@ -560,6 +563,7 @@ def refresh_cache(self):
 def read_cache(self):
     try:
         self.timestamp = None
+
         with open(cache_file, "rb") as f:
             data = tomlkit.load(f)
 
@@ -810,6 +814,8 @@ def get_official_kernels(self):
                 write_cache()
                 read_cache(self)
 
+                # self.queue_kernels = Queue()
+
                 self.queue_kernels.put(cached_kernels_list)
 
             else:
@@ -852,7 +858,9 @@ def is_thread_alive(thread_name):
 def print_all_threads():
     for thread in threading.enumerate():
         if logger.getEffectiveLevel() == 10:
-            logger.debug("Thread = %s and state is %s" % (thread.name, thread.is_alive()))
+            logger.debug(
+                "Thread = %s and state is %s" % (thread.name, thread.is_alive())
+            )
 
 
 # =====================================================
